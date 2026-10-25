@@ -5,7 +5,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
-  /* Layout: one quiet left-aligned column. Each section is a small mono label beside its content, stacking on phones. */
+  /* Layout: one quiet left-aligned column. Each section is a small mono label beside its content, stacking on phones.
+     The one bold move is a runnable C / C++ / Java card in the hero; everything else stays calm. */
   :root {
     --bg: #f5f7fa;
     --surface: #ffffff;
@@ -14,6 +15,8 @@
     --line: #dde2e9;
     --accent: #0a6c8f;
     --accent-soft: #e2f1f6;
+    --tok-str: #1b7a4a;
+    --glow2: #f0b46a;
 
     --font-display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
     --font-body: "DM Sans", "Helvetica Neue", Arial, sans-serif;
@@ -28,6 +31,8 @@
       --line: #26303b;
       --accent: #5cbfe3;
       --accent-soft: #14303b;
+      --tok-str: #7fd6a4;
+      --glow2: #e0913a;
       color-scheme: dark;
     }
   }
@@ -39,6 +44,8 @@
     --line: #26303b;
     --accent: #5cbfe3;
     --accent-soft: #14303b;
+    --tok-str: #7fd6a4;
+    --glow2: #e0913a;
     color-scheme: dark;
   }
 
@@ -51,25 +58,50 @@
     font-family: var(--font-body);
     font-size: 1.0625rem;
     line-height: 1.65;
-    padding-block: 1.5rem 3rem;
+    padding-block: 0 3rem;
     padding-left: max(16px, env(safe-area-inset-left, 0px));
     padding-right: max(16px, env(safe-area-inset-right, 0px));
     -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 46rem; margin: 0 auto; }
+  /* paints the band above the sticky header on phones with a notch */
+  body::before {
+    content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px);
+    z-index: 10; background: var(--bg);
+  }
+  .wrap { position: relative; z-index: 1; max-width: 46rem; margin: 0 auto; }
+
+  /* live wallpaper, sits behind everything */
+  #bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; display: block; pointer-events: none; }
 
   a { color: inherit; }
-  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+  a:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px;
+  }
+  button { font-family: inherit; }
 
-  /* top bar */
+  /* sticky top bar */
   .top {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 9;
+    background: var(--bg);
+    background: color-mix(in srgb, var(--bg) 78%, transparent);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
     display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
-    gap: 0.75rem 1.5rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--line);
+    gap: 0.5rem 1.5rem; padding-block: 1.1rem; border-bottom: 1px solid var(--line);
   }
   .brand { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; text-decoration: none; letter-spacing: -0.01em; }
+  .top-right { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1.25rem; }
   .nav { display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; font-family: var(--font-mono); font-size: 0.8rem; }
-  .nav a { color: var(--muted); text-decoration: none; padding: 0.15rem 0; }
+  .nav a { color: var(--muted); text-decoration: none; padding: 0.15rem 0; transition: color 0.15s; }
   .nav a:hover { color: var(--accent); }
+  .nav a[aria-current="true"] { color: var(--fg); box-shadow: inset 0 -2px 0 var(--accent); }
+  .theme {
+    font-family: var(--font-mono); font-size: 0.78rem; color: var(--muted); cursor: pointer;
+    background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 0.2rem 0.75rem;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .theme:hover { color: var(--accent); border-color: var(--accent); }
+  .progress { position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; overflow: hidden; }
+  .progress i { display: block; height: 100%; background: var(--accent); transform-origin: left; transform: scaleX(0); }
 
   /* hero */
   .hero { padding-block: 3.5rem 3rem; }
@@ -86,56 +118,128 @@
     display: inline-flex; align-items: center; gap: 0.4rem;
     padding: 0.55rem 1rem; border-radius: 6px; border: 1px solid var(--line);
     background: var(--surface); text-decoration: none; font-weight: 500; font-size: 0.95rem;
-    transition: border-color 0.15s, color 0.15s;
+    transition: border-color 0.15s, color 0.15s, transform 0.15s;
   }
-  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
   .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
   .btn.primary:hover { color: var(--bg); filter: brightness(1.08); }
+
+  /* runnable code card */
+  .code {
+    margin-top: 2.5rem; border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
+    background: var(--surface);
+    background: color-mix(in srgb, var(--surface) 90%, transparent);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  }
+  .code-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--line); }
+  .tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+  .tab {
+    font-family: var(--font-mono); font-size: 0.8rem; padding: 0.3rem 0.7rem; border: 0; border-radius: 4px;
+    background: transparent; color: var(--muted); cursor: pointer; transition: color 0.15s, background 0.15s;
+  }
+  .tab:hover { color: var(--fg); }
+  .tab[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); }
+  .code-right { display: flex; align-items: center; gap: 0.75rem; }
+  .file { font-family: var(--font-mono); font-size: 0.78rem; color: var(--muted); }
+  .run {
+    display: inline-flex; align-items: center; gap: 0.45rem; cursor: pointer;
+    font-family: var(--font-mono); font-size: 0.8rem; padding: 0.3rem 0.8rem; border-radius: 4px;
+    border: 1px solid var(--accent); background: var(--accent); color: var(--bg); font-weight: 500;
+    transition: filter 0.15s;
+  }
+  .run:hover { filter: brightness(1.1); }
+  .run::before { content: ""; border-left: 0.5rem solid currentColor; border-top: 0.3rem solid transparent; border-bottom: 0.3rem solid transparent; }
+  pre.code-body {
+    margin: 0; padding: 1rem 1.1rem; overflow-x: auto; tab-size: 4;
+    font-family: var(--font-mono); font-size: 0.88rem; line-height: 1.7; color: var(--fg);
+  }
+  .k { color: var(--accent); }
+  .s { color: var(--tok-str); }
+  .out { border-top: 1px solid var(--line); padding: 0.7rem 1.1rem; min-height: 2.9rem; font-family: var(--font-mono); font-size: 0.85rem; overflow-wrap: anywhere; }
+  .out .hint { color: var(--muted); }
+  .out .prompt { color: var(--accent); }
+  .caret { display: inline-block; width: 0.5rem; height: 1em; margin-left: 2px; vertical-align: text-bottom; background: var(--accent); animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* facts */
+  .facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 2.25rem 0 0; }
+  .fact { border-top: 2px solid var(--line); padding-top: 0.75rem; transition: border-color 0.2s; }
+  .fact:hover { border-top-color: var(--accent); }
+  .fact dt { font-family: var(--font-display); font-weight: 700; font-size: clamp(1.8rem, 6vw, 2.4rem); line-height: 1; letter-spacing: -0.02em; }
+  .fact dd { margin: 0.4rem 0 0; color: var(--muted); font-size: 0.9rem; line-height: 1.45; }
 
   /* sections */
   .section {
     display: grid; grid-template-columns: 9rem minmax(0, 1fr); gap: 0.5rem 2rem;
-    padding-block: 2.25rem; border-top: 1px solid var(--line);
+    padding-block: 2.25rem; border-top: 1px solid var(--line); scroll-margin-top: 4.25rem;
   }
   .label { font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; padding-top: 0.3rem; }
   .section p { margin: 0 0 1rem; max-width: 40rem; }
   .section p:last-child { margin-bottom: 0; }
 
   /* skills */
-  .skill-row { display: grid; grid-template-columns: 8rem minmax(0, 1fr); gap: 0.25rem 1rem; padding-block: 0.75rem; border-bottom: 1px solid var(--line); }
-  .skill-row:first-child { padding-top: 0; }
-  .skill-row:last-child { border-bottom: 0; padding-bottom: 0; }
-  .skill-name { color: var(--muted); font-size: 0.95rem; }
+  .filters { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1.5rem; }
+  .filter {
+    font-family: var(--font-mono); font-size: 0.8rem; padding: 0.3rem 0.8rem; border-radius: 999px;
+    border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+  }
+  .filter:hover { color: var(--accent); border-color: var(--accent); }
+  .filter[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .skill-list { display: grid; gap: 1rem; }
+  .skill-row { display: grid; grid-template-columns: 8rem minmax(0, 1fr); gap: 0.25rem 1rem; }
+  .skill-name { color: var(--muted); font-size: 0.95rem; padding-top: 0.2rem; }
   .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0; padding: 0; list-style: none; }
   .chips li { font-family: var(--font-mono); font-size: 0.82rem; padding: 0.2rem 0.6rem; border-radius: 4px; background: var(--accent-soft); color: var(--accent); }
 
-  /* experience + achievements */
-  .entry { padding-block: 0 1.75rem; }
-  .entry:last-child { padding-bottom: 0; }
-  .entry h3 { font-family: var(--font-display); font-weight: 500; font-size: 1.2rem; line-height: 1.3; letter-spacing: -0.01em; margin: 0 0 0.15rem; }
-  .entry .meta { font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent); margin: 0 0 0.5rem; }
-  .entry p { color: var(--fg); }
-  .entry ul { margin: 0.5rem 0 0; padding-left: 1.1rem; color: var(--muted); }
-  .entry li { margin-bottom: 0.25rem; padding-left: 0.2rem; }
-  .entry li::marker { color: var(--accent); }
+  /* experience (expandable) */
+  .entries { border-top: 1px solid var(--line); }
+  .entry { border-bottom: 1px solid var(--line); }
+  .entry summary {
+    list-style: none; cursor: pointer; display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
+    padding-block: 1.1rem;
+  }
+  .entry summary::-webkit-details-marker { display: none; }
+  .entry-head { min-width: 0; }
+  .entry h3 { font-family: var(--font-display); font-weight: 500; font-size: 1.2rem; line-height: 1.3; letter-spacing: -0.01em; margin: 0 0 0.1rem; transition: color 0.15s; }
+  .entry summary:hover h3 { color: var(--accent); }
+  .meta { font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent); margin: 0 0 0.4rem; }
+  .entry-desc { margin: 0; color: var(--fg); max-width: 36rem; }
+  .plus { position: relative; flex: none; width: 1.75rem; height: 1.75rem; margin-top: 0.15rem; border: 1px solid var(--line); border-radius: 50%; transition: border-color 0.15s; }
+  .entry summary:hover .plus { border-color: var(--accent); }
+  .plus::before, .plus::after { content: ""; position: absolute; left: 50%; top: 50%; background: var(--accent); transform: translate(-50%, -50%); transition: transform 0.2s; }
+  .plus::before { width: 0.7rem; height: 2px; }
+  .plus::after { width: 2px; height: 0.7rem; }
+  .entry[open] .plus::after { transform: translate(-50%, -50%) scaleY(0); }
+  .entry-body { padding: 0 0 1.25rem; }
+  .entry-body ul { margin: 0; padding-left: 1.1rem; color: var(--muted); }
+  .entry-body li { margin-bottom: 0.3rem; padding-left: 0.2rem; }
+  .entry-body li::marker { color: var(--accent); }
+  .hint-line { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); margin: 0.75rem 0 0; }
 
+  /* achievements */
   .wins { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; }
-  .wins li { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: 0.25rem 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--line); }
+  .wins li { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: 0.25rem 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--line); transition: transform 0.2s; }
+  .wins li:hover { transform: translateX(4px); }
   .wins li:last-child { border-bottom: 0; padding-bottom: 0; }
   .wins .tag { font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent); padding-top: 0.2rem; }
   .wins strong { font-weight: 700; }
   .wins span.d { display: block; color: var(--muted); font-size: 0.97rem; }
 
   /* contact */
-  .contact-links { display: grid; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
-  .contact-links a {
-    display: grid; grid-template-columns: 6rem minmax(0, 1fr) auto; gap: 1rem; align-items: baseline;
-    padding: 0.7rem 0; border-bottom: 1px solid var(--line); text-decoration: none;
-  }
+  .contact-links { display: grid; margin: 0; padding: 0; list-style: none; }
+  .contact-links li { display: flex; align-items: center; gap: 0.75rem; border-bottom: 1px solid var(--line); }
+  .contact-links a { flex: 1; min-width: 0; display: grid; grid-template-columns: 6rem minmax(0, 1fr) auto; gap: 1rem; align-items: baseline; padding: 0.7rem 0; text-decoration: none; }
   .contact-links a:hover .handle { color: var(--accent); }
   .contact-links .site { font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
   .contact-links .handle { overflow-wrap: anywhere; transition: color 0.15s; }
   .contact-links .arrow { color: var(--accent); }
+  .copy {
+    flex: none; min-width: 4.5rem; font-family: var(--font-mono); font-size: 0.75rem; cursor: pointer;
+    padding: 0.25rem 0.6rem; border-radius: 4px; border: 1px solid var(--line); background: transparent; color: var(--muted);
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .copy:hover { color: var(--accent); border-color: var(--accent); }
 
   footer {
     border-top: 1px solid var(--line); padding-top: 1.25rem; margin-top: 0.5rem;
@@ -144,29 +248,41 @@
   }
 
   @media (max-width: 40rem) {
+    .top { position: static; }
+    .top-right { width: 100%; justify-content: space-between; }
+    .section { scroll-margin-top: 1rem; }
     .hero { padding-block: 2.5rem 2.25rem; }
     .section { grid-template-columns: minmax(0, 1fr); padding-block: 1.75rem; }
     .label { padding-top: 0; margin-bottom: 0.5rem; }
     .skill-row { grid-template-columns: minmax(0, 1fr); }
     .wins li { grid-template-columns: minmax(0, 1fr); }
-    .contact-links a { grid-template-columns: 5rem minmax(0, 1fr) auto; }
+    .contact-links a { grid-template-columns: 4.5rem minmax(0, 1fr) auto; gap: 0.75rem; }
+    .facts { gap: 0.75rem; }
+    .file { display: none; }
   }
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
     * { transition: none !important; }
+    .caret { animation: none; }
   }
 </style>
+
+<canvas id="bg" aria-hidden="true"></canvas>
 
 <div class="wrap">
   <header class="top">
     <a class="brand" href="#top">Shakti</a>
-    <nav class="nav" aria-label="Sections">
-      <a href="#about">About</a>
-      <a href="#skills">Skills</a>
-      <a href="#experience">Experience</a>
-      <a href="#wins">Achievements</a>
-      <a href="#contact">Contact</a>
-    </nav>
+    <div class="top-right">
+      <nav class="nav" aria-label="Sections">
+        <a href="#about">About</a>
+        <a href="#skills">Skills</a>
+        <a href="#experience">Experience</a>
+        <a href="#wins">Achievements</a>
+        <a href="#contact">Contact</a>
+      </nav>
+      <button class="theme" id="theme" type="button" aria-label="Switch color theme">Dark</button>
+    </div>
+    <div class="progress" aria-hidden="true"><i id="bar"></i></div>
   </header>
 
   <main id="top">
@@ -180,6 +296,33 @@
         <a class="btn" href="https://www.linkedin.com/in/shakti-08034b30a/" target="_blank" rel="noopener">LinkedIn <span aria-hidden="true">&#8599;</span></a>
         <a class="btn" href="https://leetcode.com/u/shaktix/" target="_blank" rel="noopener">LeetCode <span aria-hidden="true">&#8599;</span></a>
       </div>
+
+      <div class="code">
+        <div class="code-bar">
+          <div class="tabs" role="tablist" aria-label="Pick a language">
+            <button class="tab" role="tab" type="button" data-lang="c" aria-selected="true" aria-controls="code">C</button>
+            <button class="tab" role="tab" type="button" data-lang="cpp" aria-selected="false" tabindex="-1" aria-controls="code">C++</button>
+            <button class="tab" role="tab" type="button" data-lang="java" aria-selected="false" tabindex="-1" aria-controls="code">Java</button>
+          </div>
+          <div class="code-right">
+            <span class="file" id="file">hello.c</span>
+            <button class="run" id="run" type="button">Run</button>
+          </div>
+        </div>
+        <pre class="code-body" id="code" role="tabpanel"><code><span class="k">#include</span> <span class="s">&lt;stdio.h&gt;</span>
+
+<span class="k">int</span> main(<span class="k">void</span>) {
+    printf(<span class="s">"Hi, I'm Shakti.\n"</span>);
+    <span class="k">return</span> 0;
+}</code></pre>
+        <div class="out" id="out" aria-live="polite"><span class="hint">Press Run to see the output.</span></div>
+      </div>
+
+      <dl class="facts">
+        <div class="fact"><dt>200</dt><dd>cold calls made for a startup</dd></div>
+        <div class="fact"><dt>1st</dt><dd>runner-up at a hackathon, entered solo</dd></div>
+        <div class="fact"><dt>3</dt><dd>languages: C, C++ and Java</dd></div>
+      </dl>
     </section>
 
     <section class="section" id="about">
@@ -194,21 +337,29 @@
     <section class="section" id="skills">
       <div class="label">Skills</div>
       <div>
-        <div class="skill-row">
-          <div class="skill-name">Languages</div>
-          <ul class="chips"><li>C</li><li>C++</li><li>Java</li></ul>
+        <div class="filters" role="group" aria-label="Filter skills">
+          <button class="filter" type="button" data-filter="all" aria-pressed="true">All</button>
+          <button class="filter" type="button" data-filter="tech" aria-pressed="false">Code</button>
+          <button class="filter" type="button" data-filter="sales" aria-pressed="false">Sales and clients</button>
+          <button class="filter" type="button" data-filter="events" aria-pressed="false">Events</button>
         </div>
-        <div class="skill-row">
-          <div class="skill-name">Development</div>
-          <ul class="chips"><li>Full-stack development</li><li>Problem solving</li></ul>
-        </div>
-        <div class="skill-row">
-          <div class="skill-name">Business</div>
-          <ul class="chips"><li>B2B relations</li><li>Cold calling</li><li>Client management</li><li>Sponsorship outreach</li></ul>
-        </div>
-        <div class="skill-row">
-          <div class="skill-name">Management</div>
-          <ul class="chips"><li>Event hosting</li><li>Team coordination</li></ul>
+        <div class="skill-list">
+          <div class="skill-row" data-group="tech">
+            <div class="skill-name">Languages</div>
+            <ul class="chips"><li>C</li><li>C++</li><li>Java</li></ul>
+          </div>
+          <div class="skill-row" data-group="tech">
+            <div class="skill-name">Development</div>
+            <ul class="chips"><li>Full-stack development</li><li>Problem solving</li></ul>
+          </div>
+          <div class="skill-row" data-group="sales">
+            <div class="skill-name">Business</div>
+            <ul class="chips"><li>B2B relations</li><li>Cold calling</li><li>Client management</li><li>Sponsorship outreach</li></ul>
+          </div>
+          <div class="skill-row" data-group="events">
+            <div class="skill-name">Management</div>
+            <ul class="chips"><li>Event hosting</li><li>Team coordination</li></ul>
+          </div>
         </div>
       </div>
     </section>
@@ -216,30 +367,58 @@
     <section class="section" id="experience">
       <div class="label">Experience</div>
       <div>
-        <article class="entry">
-          <h3>Sales and outreach</h3>
-          <p class="meta">Startup</p>
-          <p>I work with a startup on selling and outreach, and I look after its clients.</p>
-          <ul>
-            <li>Made 200 cold calls to prospective customers</li>
-            <li>Managed client relationships after the first conversation</li>
-            <li>Built practical B2B experience from the first call to follow-up</li>
-          </ul>
-        </article>
-        <article class="entry">
-          <h3>Corporate relations</h3>
-          <p class="meta">Member, E-Cell, KIET</p>
-          <p>I handle corporate relations for the Entrepreneurship Cell.</p>
-          <ul>
-            <li>Reached out to companies and startups to sponsor our events</li>
-            <li>Pitched the value of the events to potential partners</li>
-          </ul>
-        </article>
-        <article class="entry">
-          <h3>Event host</h3>
-          <p class="meta">College events</p>
-          <p>I have hosted multiple events, which taught me to manage people, timing and a live audience.</p>
-        </article>
+        <div class="entries">
+          <details class="entry">
+            <summary>
+              <div class="entry-head">
+                <h3>Sales and outreach</h3>
+                <p class="meta">Startup</p>
+                <p class="entry-desc">I work with a startup on selling and outreach, and I look after its clients.</p>
+              </div>
+              <span class="plus" aria-hidden="true"></span>
+            </summary>
+            <div class="entry-body">
+              <ul>
+                <li>Made 200 cold calls to prospective customers</li>
+                <li>Managed client relationships after the first conversation</li>
+                <li>Built practical B2B experience from the first call to follow-up</li>
+              </ul>
+            </div>
+          </details>
+          <details class="entry">
+            <summary>
+              <div class="entry-head">
+                <h3>Corporate relations</h3>
+                <p class="meta">Member, E-Cell, KIET</p>
+                <p class="entry-desc">I handle corporate relations for the Entrepreneurship Cell.</p>
+              </div>
+              <span class="plus" aria-hidden="true"></span>
+            </summary>
+            <div class="entry-body">
+              <ul>
+                <li>Reached out to companies and startups to sponsor our events</li>
+                <li>Pitched the value of the events to potential partners</li>
+              </ul>
+            </div>
+          </details>
+          <details class="entry">
+            <summary>
+              <div class="entry-head">
+                <h3>Event host</h3>
+                <p class="meta">Events</p>
+                <p class="entry-desc">I have hosted multiple events.</p>
+              </div>
+              <span class="plus" aria-hidden="true"></span>
+            </summary>
+            <div class="entry-body">
+              <ul>
+                <li>Hosted multiple events in front of a live audience</li>
+                <li>Learned to manage people, timing and the flow of an event</li>
+              </ul>
+            </div>
+          </details>
+        </div>
+        <p class="hint-line">Tap a role to see more.</p>
       </div>
     </section>
 
@@ -262,9 +441,18 @@
       <div>
         <p>The best way to reach me is on LinkedIn. My code and practice problems are on GitHub and LeetCode.</p>
         <ul class="contact-links">
-          <li><a href="https://www.linkedin.com/in/shakti-08034b30a/" target="_blank" rel="noopener"><span class="site">LinkedIn</span><span class="handle">linkedin.com/in/shakti-08034b30a</span><span class="arrow" aria-hidden="true">&#8599;</span></a></li>
-          <li><a href="https://github.com/shakti-x" target="_blank" rel="noopener"><span class="site">GitHub</span><span class="handle">github.com/shakti-x</span><span class="arrow" aria-hidden="true">&#8599;</span></a></li>
-          <li><a href="https://leetcode.com/u/shaktix/" target="_blank" rel="noopener"><span class="site">LeetCode</span><span class="handle">leetcode.com/u/shaktix</span><span class="arrow" aria-hidden="true">&#8599;</span></a></li>
+          <li>
+            <a href="https://www.linkedin.com/in/shakti-08034b30a/" target="_blank" rel="noopener"><span class="site">LinkedIn</span><span class="handle">linkedin.com/in/shakti-08034b30a</span><span class="arrow" aria-hidden="true">&#8599;</span></a>
+            <button class="copy" type="button" data-copy="https://www.linkedin.com/in/shakti-08034b30a/">Copy</button>
+          </li>
+          <li>
+            <a href="https://github.com/shakti-x" target="_blank" rel="noopener"><span class="site">GitHub</span><span class="handle">github.com/shakti-x</span><span class="arrow" aria-hidden="true">&#8599;</span></a>
+            <button class="copy" type="button" data-copy="https://github.com/shakti-x">Copy</button>
+          </li>
+          <li>
+            <a href="https://leetcode.com/u/shaktix/" target="_blank" rel="noopener"><span class="site">LeetCode</span><span class="handle">leetcode.com/u/shaktix</span><span class="arrow" aria-hidden="true">&#8599;</span></a>
+            <button class="copy" type="button" data-copy="https://leetcode.com/u/shaktix/">Copy</button>
+          </li>
         </ul>
       </div>
     </section>
@@ -275,3 +463,307 @@
     <span>KIET Deemed to be University</span>
   </footer>
 </div>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* theme toggle */
+  var themeBtn = document.getElementById("theme");
+  var darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  function isDark() {
+    var t = root.getAttribute("data-theme");
+    return t ? t === "dark" : darkQuery.matches;
+  }
+  function themeLabel() {
+    themeBtn.textContent = isDark() ? "Light" : "Dark";
+    themeBtn.setAttribute("aria-label", "Switch to " + (isDark() ? "light" : "dark") + " theme");
+  }
+  try {
+    var saved = localStorage.getItem("shakti-theme");
+    if (saved === "light" || saved === "dark") root.setAttribute("data-theme", saved);
+  } catch (e) {}
+  themeBtn.addEventListener("click", function () {
+    var next = isDark() ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("shakti-theme", next); } catch (e) {}
+    themeLabel();
+  });
+  if (darkQuery.addEventListener) darkQuery.addEventListener("change", themeLabel);
+  themeLabel();
+
+  /* runnable code card */
+  var snippets = {
+    c: {
+      file: "hello.c",
+      html: `<span class="k">#include</span> <span class="s">&lt;stdio.h&gt;</span>\n\n<span class="k">int</span> main(<span class="k">void</span>) {\n    printf(<span class="s">"Hi, I'm Shakti.\\n"</span>);\n    <span class="k">return</span> 0;\n}`
+    },
+    cpp: {
+      file: "hello.cpp",
+      html: `<span class="k">#include</span> <span class="s">&lt;iostream&gt;</span>\n\n<span class="k">int</span> main() {\n    std::cout &lt;&lt; <span class="s">"Hi, I'm Shakti.\\n"</span>;\n    <span class="k">return</span> 0;\n}`
+    },
+    java: {
+      file: "Shakti.java",
+      html: `<span class="k">public class</span> Shakti {\n    <span class="k">public static void</span> main(String[] args) {\n        System.out.println(<span class="s">"Hi, I'm Shakti."</span>);\n    }\n}`
+    }
+  };
+  var order = ["c", "cpp", "java"];
+  var tabs = [].slice.call(document.querySelectorAll(".tab"));
+  var codeEl = document.getElementById("code");
+  var outEl = document.getElementById("out");
+  var fileEl = document.getElementById("file");
+  var runBtn = document.getElementById("run");
+  var timer = null;
+  var current = "c";
+
+  function showHint() {
+    outEl.innerHTML = '<span class="hint">Press Run to see the output.</span>';
+  }
+  function selectLang(key, focus) {
+    var s = snippets[key];
+    current = key;
+    codeEl.innerHTML = "<code>" + s.html + "</code>";
+    fileEl.textContent = s.file;
+    tabs.forEach(function (t) {
+      var on = t.getAttribute("data-lang") === key;
+      t.setAttribute("aria-selected", on ? "true" : "false");
+      t.tabIndex = on ? 0 : -1;
+      if (on && focus) t.focus();
+    });
+    clearTimeout(timer);
+    showHint();
+  }
+  function run() {
+    var text = "Hi, I'm Shakti.";
+    clearTimeout(timer);
+    outEl.innerHTML = '<span class="prompt">&gt;</span> <span id="typed"></span><span class="caret" aria-hidden="true"></span>';
+    var typed = document.getElementById("typed");
+    if (reduced) { typed.textContent = text; return; }
+    var i = 0;
+    (function step() {
+      typed.textContent = text.slice(0, i);
+      i += 1;
+      if (i <= text.length) timer = setTimeout(step, 40);
+    })();
+  }
+  tabs.forEach(function (t) {
+    t.addEventListener("click", function () { selectLang(t.getAttribute("data-lang"), false); });
+    t.addEventListener("keydown", function (e) {
+      var idx = order.indexOf(current);
+      if (e.key === "ArrowRight") { e.preventDefault(); selectLang(order[(idx + 1) % order.length], true); }
+      if (e.key === "ArrowLeft") { e.preventDefault(); selectLang(order[(idx + order.length - 1) % order.length], true); }
+    });
+  });
+  runBtn.addEventListener("click", run);
+
+  /* skills filter */
+  var filterBtns = [].slice.call(document.querySelectorAll(".filter"));
+  var rows = [].slice.call(document.querySelectorAll(".skill-row"));
+  filterBtns.forEach(function (b) {
+    b.addEventListener("click", function () {
+      var f = b.getAttribute("data-filter");
+      filterBtns.forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+      rows.forEach(function (r) { r.hidden = !(f === "all" || r.getAttribute("data-group") === f); });
+    });
+  });
+
+  /* copy buttons */
+  [].slice.call(document.querySelectorAll(".copy")).forEach(function (b) {
+    b.addEventListener("click", function () {
+      var text = b.getAttribute("data-copy");
+      function done(ok) {
+        b.textContent = ok ? "Copied" : "Copy failed";
+        setTimeout(function () { b.textContent = "Copy"; }, 1600);
+      }
+      function fallback() {
+        try {
+          var ta = document.createElement("textarea");
+          ta.value = text;
+          ta.setAttribute("readonly", "");
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          var ok = document.execCommand("copy");
+          document.body.removeChild(ta);
+          done(ok);
+        } catch (e) { done(false); }
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { done(true); }, fallback);
+      } else { fallback(); }
+    });
+  });
+
+  /* scroll progress and active section */
+  var bar = document.getElementById("bar");
+  var links = [].slice.call(document.querySelectorAll(".nav a"));
+  var targets = links.map(function (l) { return document.querySelector(l.getAttribute("href")); });
+  var ticking = false;
+  function update() {
+    ticking = false;
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    var p = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+    bar.style.transform = "scaleX(" + p + ")";
+    var cur = -1;
+    targets.forEach(function (t, i) {
+      if (t && t.getBoundingClientRect().top <= 120) cur = i;
+    });
+    links.forEach(function (l, i) {
+      if (i === cur) l.setAttribute("aria-current", "true"); else l.removeAttribute("aria-current");
+    });
+  }
+  window.addEventListener("scroll", function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(update); }
+  }, { passive: true });
+  window.addEventListener("resize", update);
+  update();
+})();
+
+/* live wallpaper: slow colour glows plus a network of connected dots that reaches toward the pointer */
+(function () {
+  var canvas = document.getElementById("bg");
+  if (!canvas || !canvas.getContext) return;
+  var ctx = canvas.getContext("2d");
+  var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var w = 0, h = 0, dpr = 1, scrollY = 0;
+  var nodes = [];
+  var pointer = { x: -9999, y: -9999, active: false };
+  var colors = { accent: [10, 108, 143], glow2: [240, 180, 106], dark: false };
+  var glows = [
+    { fx: 0.15, fy: 0.2, r: 0.55, sp: 0.00022, ph: 0, key: "accent", k: 1 },
+    { fx: 0.88, fy: 0.42, r: 0.5, sp: 0.00017, ph: 2.1, key: "glow2", k: 0.85 },
+    { fx: 0.4, fy: 0.92, r: 0.6, sp: 0.00019, ph: 4.2, key: "accent", k: 0.9 }
+  ];
+
+  function parse(hex, fallback) {
+    var m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec((hex || "").trim());
+    if (!m) return fallback;
+    var v = m[1];
+    if (v.length === 3) v = v.replace(/(.)/g, "$1$1");
+    return [parseInt(v.slice(0, 2), 16), parseInt(v.slice(2, 4), 16), parseInt(v.slice(4, 6), 16)];
+  }
+  function readColors() {
+    var cs = getComputedStyle(document.documentElement);
+    colors.accent = parse(cs.getPropertyValue("--accent"), colors.accent);
+    colors.glow2 = parse(cs.getPropertyValue("--glow2"), colors.glow2);
+    var bg = parse(cs.getPropertyValue("--bg"), [245, 247, 250]);
+    colors.dark = bg[0] + bg[1] + bg[2] < 380;
+  }
+  function rgba(c, a) { return "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + a + ")"; }
+
+  function makeNode() {
+    var a = Math.random() * Math.PI * 2, s = 0.12 + Math.random() * 0.22;
+    return { x: Math.random() * w, y: Math.random() * h, vx: Math.cos(a) * s, vy: Math.sin(a) * s, r: 1 + Math.random() * 1.3 };
+  }
+  function resize() {
+    w = window.innerWidth; h = window.innerHeight;
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    while (w * h * dpr * dpr > 9e6 && dpr > 1) dpr -= 0.25;
+    canvas.width = Math.max(1, Math.round(w * dpr));
+    canvas.height = Math.max(1, Math.round(h * dpr));
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var target = Math.min(w < 640 ? 36 : 70, Math.round(w * Math.min(h, 1200) / 17000));
+    while (nodes.length < target) nodes.push(makeNode());
+    nodes.length = Math.min(nodes.length, target);
+    nodes.forEach(function (n) { n.x = Math.min(n.x, w); n.y = Math.min(n.y, h); });
+  }
+
+  function drawGlows(t) {
+    var base = colors.dark ? 0.2 : 0.17;
+    var size = Math.max(w, h);
+    glows.forEach(function (g) {
+      var x = w * (g.fx + 0.14 * Math.sin(t * g.sp + g.ph));
+      var y = h * (g.fy + 0.1 * Math.cos(t * g.sp * 0.8 + g.ph)) - scrollY * 0.08;
+      var r = size * g.r;
+      var c = colors[g.key];
+      var grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+      grad.addColorStop(0, rgba(c, base * g.k));
+      grad.addColorStop(1, rgba(c, 0));
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+    });
+  }
+
+  function step(dt) {
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      n.x += n.vx * dt; n.y += n.vy * dt;
+      if (n.x < -20) n.x = w + 20; else if (n.x > w + 20) n.x = -20;
+      if (n.y < -20) n.y = h + 20; else if (n.y > h + 20) n.y = -20;
+    }
+  }
+
+  function draw(t) {
+    ctx.clearRect(0, 0, w, h);
+    drawGlows(t);
+    var a = colors.accent;
+    var linkD = w < 640 ? 105 : 135, linkD2 = linkD * linkD;
+    var lineA = colors.dark ? 0.24 : 0.22, dotA = colors.dark ? 0.7 : 0.55;
+    var i, j, n, m, dx, dy, d2;
+    ctx.lineWidth = 1;
+    for (i = 0; i < nodes.length; i++) {
+      n = nodes[i];
+      for (j = i + 1; j < nodes.length; j++) {
+        m = nodes[j];
+        dx = n.x - m.x; dy = n.y - m.y; d2 = dx * dx + dy * dy;
+        if (d2 < linkD2) {
+          ctx.strokeStyle = rgba(a, lineA * (1 - d2 / linkD2));
+          ctx.beginPath(); ctx.moveTo(n.x, n.y); ctx.lineTo(m.x, m.y); ctx.stroke();
+        }
+      }
+    }
+    if (pointer.active) {
+      var reach = 170, reach2 = reach * reach;
+      var pg = ctx.createRadialGradient(pointer.x, pointer.y, 0, pointer.x, pointer.y, 150);
+      pg.addColorStop(0, rgba(colors.glow2, colors.dark ? 0.2 : 0.22));
+      pg.addColorStop(1, rgba(colors.glow2, 0));
+      ctx.fillStyle = pg;
+      ctx.fillRect(pointer.x - 150, pointer.y - 150, 300, 300);
+      for (i = 0; i < nodes.length; i++) {
+        n = nodes[i];
+        dx = n.x - pointer.x; dy = n.y - pointer.y; d2 = dx * dx + dy * dy;
+        if (d2 < reach2) {
+          ctx.strokeStyle = rgba(a, 0.5 * (1 - d2 / reach2));
+          ctx.beginPath(); ctx.moveTo(n.x, n.y); ctx.lineTo(pointer.x, pointer.y); ctx.stroke();
+        }
+      }
+    }
+    ctx.fillStyle = rgba(a, dotA);
+    for (i = 0; i < nodes.length; i++) {
+      n = nodes[i];
+      ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  var last = 0, frames = 0;
+  function frame(ts) {
+    var dt = last ? Math.min((ts - last) / 16.67, 3) : 1;
+    last = ts;
+    frames += 1;
+    if (frames % 45 === 0) readColors();
+    step(dt);
+    draw(ts);
+    requestAnimationFrame(frame);
+  }
+  function redrawStatic() { readColors(); draw(0); }
+
+  window.addEventListener("pointermove", function (e) { pointer.x = e.clientX; pointer.y = e.clientY; pointer.active = true; }, { passive: true });
+  window.addEventListener("pointerdown", function (e) { pointer.x = e.clientX; pointer.y = e.clientY; pointer.active = true; }, { passive: true });
+  window.addEventListener("pointerup", function (e) {
+    if (e.pointerType === "touch") setTimeout(function () { pointer.active = false; }, 600);
+  }, { passive: true });
+  document.documentElement.addEventListener("mouseleave", function () { pointer.active = false; });
+  window.addEventListener("scroll", function () { scrollY = window.scrollY || 0; }, { passive: true });
+  window.addEventListener("resize", function () { resize(); if (reduced) redrawStatic(); });
+  if (window.MutationObserver) {
+    new MutationObserver(function () { readColors(); if (reduced) draw(0); })
+      .observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  }
+
+  readColors();
+  resize();
+  if (reduced) { draw(0); } else { requestAnimationFrame(frame); }
+})();
+</script>
